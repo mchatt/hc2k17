@@ -10,7 +10,7 @@ class Input:
     X = 0
     videoSize = None
     endpointArray = None
-    request = None
+    requestArray = None
 
 class Output:
     nbCacheUsed = 0
@@ -35,19 +35,30 @@ def print_request(r):
     print(r.endpointId)
     print(r.nbRequest)
 
-def possibleToAddVideo(iInput, videoId, remainingSize):
-    return (remainingSize[videoId] >= iInput.videoSize[videoId])
+def possibleToAddVideo(iInput, videoId, cacheId, remainingSize):
+    return (remainingSize[int(cacheId)] >= int(iInput.videoSize[int(videoId)]))
 
 def compute(iInput):
+    res = Output()
+    res.cacheContent = [[] for i in range(iInput.C)]
+    print(res.cacheContent)
+
     remainingSize = [iInput.X] * iInput.C
     
-    
-    
+    for req in iInput.requestArray:
+        print('new request')
+        for cache in iInput.endpointArray[req.endpointId].latencyToCache:
+            cacheId = int(cache[0])
+            if possibleToAddVideo(iInput, req.videoId, cacheId, remainingSize) and req.videoId not in res.cacheContent[cacheId]:
+                print('adding video '+str(req.videoId)+' to cache'+cache[0])
+                remainingSize[cacheId] -= int(iInput.videoSize[req.videoId])
+                res.cacheContent[cacheId].append(req.videoId)
+                break
+            else:
+                print('impossible to add video '+str(req.videoId)+' to cache'+cache[0])
+                continue
 
-    res = Output()
-    # compute logique
-    res.nbCacheUsed = 2
-    res.cacheContent = [ [1],[],[2,4] ]
+    res.nbCacheUsed = iInput.C - res.cacheContent.count([])
     return res
 
 def parseInput(iInputFilePath):
@@ -61,9 +72,8 @@ def parseInput(iInputFilePath):
     res.R = int(l1s[2])
     res.C = int(l1s[3])
     res.X = int(l1s[4])
-    print(str(res.V)+' '+str(res.E)+' '+str(res.R)+' '+str(res.C)+' '+str(res.X))
+    #print(str(res.V)+' '+str(res.E)+' '+str(res.R)+' '+str(res.C)+' '+str(res.X))
     res.videoSize = content[1].split()
-    print(res.videoSize)
     i = 2
     res.endpointArray = []
     for x in range(0,res.E):
@@ -75,16 +85,21 @@ def parseInput(iInputFilePath):
         for y in range(0,e.numberConnectionToCache):
             e.latencyToCache.append(content[i].split())
             i = i+1
+        e.latencyToCache.sort(key=lambda x: x[1])
         res.endpointArray.append(e)
-        print_endpoint(e)
+        #print_endpoint(e)
     
+    res.requestArray = []
     for x in range(0,res.R):
         r = request()
         r.videoId = int(content[i].split()[0])
         r.endpointId = int(content[i].split()[1])
         r.nbRequest = int(content[i].split()[2])
         i = i+1
-        print_request(r)
+        res.requestArray.append(r)
+        #print_request(r)
+    
+    res.requestArray.sort(key=lambda x:x.nbRequest, reverse=True)
     return res
 
 def formatOutput(iOutput, iOutputFilePath):
